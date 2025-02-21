@@ -17,7 +17,7 @@ let waitingSocket = null;
 io.on("connection", (socket) => {
   console.log(`New client connected: ${socket.id}`);
 
-  // Auto pairing logic
+  // Auto pairing logic for text chat (and video calls)
   if (waitingSocket) {
     // A user is waiting, so create a unique room name and pair them
     const roomName = `room-${waitingSocket.id}-${socket.id}`;
@@ -31,12 +31,10 @@ io.on("connection", (socket) => {
     // Send a system notification event to all clients in the room
     io.in(roomName).emit("notification", {
       type: "paired",
-      message: "partner found.",
+      message: "Partner found.",
     });
 
-    console.log(
-      `Paired ${waitingSocket.id} and ${socket.id} in room ${roomName}`
-    );
+    console.log(`Paired ${waitingSocket.id} and ${socket.id} in room ${roomName}`);
 
     // Clear the waiting socket variable
     waitingSocket = null;
@@ -47,55 +45,73 @@ io.on("connection", (socket) => {
     console.log(`Socket ${socket.id} is waiting for a partner`);
   }
 
-  // Handle chat messages within a room
+  // Handle text chat messages within a room
   socket.on("message", ({ room, message }) => {
     // Broadcast the message to the other user in the room
     socket.to(room).emit("message", message);
   });
+
+  // Handle video call signaling events
+  socket.on("video-offer", (data) => {
+    // Forward the video offer (SDP) to the other peer in the room
+    socket.to(data.room).emit("video-offer", {
+      sdp: data.sdp,
+      sender: socket.id,
+    });
+    console.log(`Video offer from ${socket.id} forwarded in room ${data.room}`);
+  });
+
+  socket.on("video-answer", (data) => {
+    // Forward the video answer (SDP) to the other peer in the room
+    socket.to(data.room).emit("video-answer", {
+      sdp: data.sdp,
+      sender: socket.id,
+    });
+    console.log(`Video answer from ${socket.id} forwarded in room ${data.room}`);
+  });
+
+  socket.on("new-ice-candidate", (data) => {
+    // Forward new ICE candidates to the other peer in the room
+    socket.to(data.room).emit("new-ice-candidate", {
+      candidate: data.candidate,
+      sender: socket.id,
+    });
+    console.log(`New ICE candidate from ${socket.id} forwarded in room ${data.room}`);
+  });
+
+  // Handle leaving a room
   socket.on("leave-room", (roomName) => {
-    // Remove the socket from the specified room
     socket.leave(roomName, () => {
       console.log(`Socket ${socket.id} left room ${roomName}`);
-
-      // Notify the remaining socket(s) in the room that their partner has left
       socket.to(roomName).emit("partner-disconnected", {
         message: "Your partner has left the chat.",
       });
-
-      // Optional: you can perform additional cleanup here if needed.
     });
   });
 
-  // On disconnect, clear the waitingSocket if necessary
-  // In your server code's disconnect handler
+  // When a socket disconnects (or is disconnecting), notify its partner and move partner to waiting
   socket.on("disconnecting", () => {
     console.log(`Client disconnecting: ${socket.id}`);
-    // Iterate over rooms before they are cleared
     socket.rooms.forEach((room) => {
       if (room !== socket.id) {
-        // 'room' is the room name and 'socket' is the current socket
         const clients = io.sockets.adapter.rooms.get(room);
         if (clients && clients.size > 1) {
-          // Convert the set to an array and filter out the current socket's id
           const partnerId = Array.from(clients).find((id) => id !== socket.id);
           console.log("The other user's id is:", partnerId);
-
-          // Now emit an event specifically to the partner
           io.to(partnerId).emit("partner-disconnected", {
-            message: "Your partner has disconnected.",
+            message: "Your partner has disconnected. Waiting for a new partner...",
           });
           const partnerSocket = io.sockets.sockets.get(partnerId);
-          waitingSocket = partnerSocket; // Store the socket object
-          
+          waitingSocket = partnerSocket; // Place the remaining partner into waiting state
+          partnerSocket.emit("waiting", { message: "Waiting for a partner..." });
         }
       }
     });
   });
 
-  // Optionally keep your disconnect event for cleanup
+  // Cleanup on disconnect
   socket.on("disconnect", () => {
     console.log(`Client disconnected: ${socket.id}`);
-
     if (waitingSocket && waitingSocket.id === socket.id) {
       waitingSocket = null;
     }
