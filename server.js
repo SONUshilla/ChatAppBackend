@@ -31,7 +31,7 @@ io.on("connection", (socket) => {
     // Send a system notification event to all clients in the room
     io.in(roomName).emit("notification", {
       type: "paired",
-      message: "You've been paired! Start chatting now.",
+      message: "partner found.",
     });
 
     console.log(
