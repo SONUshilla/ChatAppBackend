@@ -3,6 +3,9 @@
   "version": "0.0.1",
   "description": "my first socket.io app",
   "type": "module", 
+  "scripts": {
+    "start": "node server.js"
+  },
   "engines": {
     "node": "20.16.0"
   },
