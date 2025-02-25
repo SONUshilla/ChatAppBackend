@@ -1,0 +1,13 @@
+{
+  "type": "module",
+  "name": "socket-chat-example",
+  "version": "0.0.1",
+  "description": "my first socket.io app",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "http": "^0.0.1-security",
+    "node": "^18.20.7",
+    "socket.io": "^4.8.1"
+  }
+}
