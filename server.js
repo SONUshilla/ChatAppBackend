@@ -86,20 +86,11 @@ io.on("connection", (socket) => {
   socket.on("sendMessage", ({ room, message }) => {
     socket.to(room).emit("message", message);
   });
+  
   // Server-side code (e.g., in your Socket.IO setup)
   socket.on("endChat", (room) => {
     // Emit the event to all sockets in the room (excluding the sender)
     socket.to(room).emit("partner-disconnected");
-  
-    // Optionally mark the remaining client as waiting
-    const clients = io.sockets.adapter.rooms.get(room);
-    if (clients) {
-      clients.forEach((clientId) => {
-        if (clientId !== socket.id) {
-          waitingSocket = io.sockets.sockets.get(clientId);
-        }
-      });
-    }
   
     // Now leave the room
     socket.leave(room);
@@ -110,15 +101,7 @@ io.on("connection", (socket) => {
   socket.on("disconnecting", () => {
     socket.rooms.forEach((room) => {
       if (room !== socket.id) {
-        socket.to(room).emit("partner-disconnected");
-        const clients = io.sockets.adapter.rooms.get(room);
-        if (clients) {
-          clients.forEach((clientId) => {
-            if (clientId !== socket.id) {
-              waitingSocket = io.sockets.sockets.get(clientId);
-            }
-          });
-        }
+        socket.to(room).emit("partner-disconnected");   
       }
     });
   });
