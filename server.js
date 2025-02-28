@@ -107,13 +107,8 @@ io.on("connection", (socket) => {
 
   // Server-side code (e.g., in your Socket.IO setup)
   socket.on("endChat", (room) => {
-    // Emit the event to all sockets in the room (excluding the sender)
-
-    setTimeout(() => {
       socket.to(room).emit("partner-disconnected");
-    }, 100);
-    // Now leave the room
-    socket.leave(room);
+      socket.leave(room);
   });
   
 
