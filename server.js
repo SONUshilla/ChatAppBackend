@@ -8,6 +8,7 @@ const io = new Server(server, {
   cors: { origin: "*", methods: ["GET", "POST"] },
 });
 let waitingSocket = null;
+let waitingVideoSocket = null;
 
 io.on("connection", (socket) => {
   console.log(`User connected: ${socket.id}`);
@@ -21,6 +22,11 @@ io.on("connection", (socket) => {
         socket.emit("waiting");
       }, 10);
     } else {
+      if(waitingSocket===socket)
+        {
+            socket.emit("waiting");
+        }
+        else{
       // A user is waiting, create a new room for the pair
       const room = `room-${socket.id}-${waitingSocket.id}`;
       console.log("109");
@@ -28,34 +34,41 @@ io.on("connection", (socket) => {
       socket.join(room);
       waitingSocket.join(room);
       setTimeout(() => {
-        io.to(room).emit("roomJoined", { room });
+        io.to(room).emit("chatRoomJoined", { room });
         io.to(room).emit("notification", { message: "A new user has joined the chat!" });
       }, 100);
 
       // Reset waiting socket
       waitingSocket = null;
-    }
+    }}
   });
   socket.on("joinVideoRoom", () => {
-    if (!waitingSocket) {
+    if (!waitingVideoSocket) {
       // No user waiting, set this socket as the waiting one
-      waitingSocket = socket;
-      console.log("1");
-      socket.emit("notification", "Waiting for another user to join...");
+      waitingVideoSocket = socket;
+      setTimeout(() => {
+        socket.emit("waiting");
+      }, 10);
     } else {
+      if(waitingVideoSocket===socket)
+      {
+          socket.emit("waiting");
+      }
+      else{
       // A user is waiting, create a new room for the pair
-      const room = `room-${socket.id}-${waitingSocket.id}`;
+      const room = `room-${socket.id}-${waitingVideoSocket.id}`;
       console.log("109");
       // Join both sockets to the same room
       socket.join(room);
-      waitingSocket.join(room);
-      waitingSocket.emit("joined-room", { id: socket.id });
+      waitingVideoSocket.join(room);
+      waitingVideoSocket.emit("joined-room", { id: socket.id });
       setTimeout(() => {
         io.to(room).emit("roomJoined", { room });
         io.to(room).emit("notification", { message: "A new user has joined the chat!" });
       }, 100);
-      waitingSocket = null;
+      waitingVideoSocket = null;
     }
+  }
   });
 
   /* // Handle joining a room
@@ -87,11 +100,18 @@ io.on("connection", (socket) => {
     socket.to(room).emit("message", message);
   });
   
+  socket.on("sendVideoMessage", ({ room, message }) => {
+    socket.to(room).emit("videoMessage", message);
+  });
+  
+
   // Server-side code (e.g., in your Socket.IO setup)
   socket.on("endChat", (room) => {
     // Emit the event to all sockets in the room (excluding the sender)
-    socket.to(room).emit("partner-disconnected");
-  
+
+    setTimeout(() => {
+      socket.to(room).emit("partner-disconnected");
+    }, 100);
     // Now leave the room
     socket.leave(room);
   });
@@ -108,6 +128,7 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", () => {
     if (waitingSocket?.id === socket.id) waitingSocket = null;
+    if (waitingVideoSocket?.id === socket.id) waitingVideoSocket = null;
   });
 });
 
