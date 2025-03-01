@@ -104,6 +104,10 @@ io.on("connection", (socket) => {
     socket.to(room).emit("videoMessage", message);
   });
   
+  socket.on("ice-candidate", ({ room,candidate}) => {
+    // Broadcast the ICE candidate to the other peer
+    socket.to(room).emit("ice-candidate", candidate);
+  });
 
   // Server-side code (e.g., in your Socket.IO setup)
   socket.on("endChat", (room) => {
