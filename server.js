@@ -9,10 +9,12 @@ const io = new Server(server, {
 });
 let waitingSocket = null;
 let waitingVideoSocket = null;
+let totalUsers = 0; // Track total connected users
 
 io.on("connection", (socket) => {
   console.log(`User connected: ${socket.id}`);
-
+  totalUsers++;
+  io.emit("updateTotalUsers", totalUsers);
   socket.on("joinChatRoom", () => {
     if (!waitingSocket) {
       // No user waiting, set this socket as the waiting one
@@ -126,6 +128,8 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
+    totalUsers--;
+    io.emit("updateTotalUsers", totalUsers);
     if (waitingSocket?.id === socket.id) waitingSocket = null;
     if (waitingVideoSocket?.id === socket.id) waitingVideoSocket = null;
   });
